@@ -401,12 +401,11 @@ class Column:
 
 class Square:
 
-    def __init__(self, id, width, height, col_length=3, row_length=3): 
+    def __init__(self, id, dims, col_length=3, row_length=3): 
         self.__square_id = id
-        self.__cols = [Column(col_length) for _ in range(width)]
-        self.__rows = [Row(row_length) for _ in range(height)]
-        self.__width = width
-        self.__height = height
+        self.__dims = dims
+        self.__cols = [Column(col_length) for _ in range(dims)]
+        self.__rows = [Row(row_length) for _ in range(dims)]
         self.__sqr_width = col_length
         self.__sqr_height = row_length
         self.__missing_values: dict[int, bool] = self.__setup_missing() # Stores the missing values in the square
@@ -421,19 +420,19 @@ class Square:
         This function is an in-place modification of the Square object.
         '''
 
-        if len(values) != self.__width * self.__height:
+        if len(values) != self.__dims * self.__dims:
             raise Exception("Could not initialize the Square object because the number of values did not match the dimensions of the square")
         
-        cols = [[] for _ in range(self.__width)]
-        rows = [[] for _ in range(self.__height)]
+        cols = [[] for _ in range(self.__dims)]
+        rows = [[] for _ in range(self.__dims)]
 
         # TODO Optimize since we are doing O(n + n^2) operations when we could do just O(n) operations
         for i,val in enumerate(values):
-            col_index = i % self.__width
+            col_index = i % self.__dims
             cols[col_index].append(val)
 
-        for i in range(self.__width):
-            for j in range(self.__height):
+        for i in range(self.__dims):
+            for j in range(self.__dims):
                 val = cols[j][i]
                 rows[i].append(val)
 
@@ -447,10 +446,10 @@ class Square:
         cell at the index (cell_index) in the Row object.
         '''
 
-        if row_index < 0 or row_index >= self.__height:
+        if row_index < 0 or row_index >= self.__dims:
             raise Exception("The row index you are trying to access is out of bounds")
 
-        if cell_index < 0 or cell_index >= self.__width:
+        if cell_index < 0 or cell_index >= self.__dims:
             raise Exception("The cell index you are trying to access is out of bounds")
 
         return self.__rows[row_index][cell_index]
@@ -462,10 +461,10 @@ class Square:
         cell at the index (cell_index) in the Column object.
         '''
 
-        if col_index < 0 or col_index >= self.__height:
+        if col_index < 0 or col_index >= self.__dims:
             raise Exception("The column index you are trying to access is out of bounds")
 
-        if cell_index < 0 or cell_index >= self.__width:
+        if cell_index < 0 or cell_index >= self.__dims:
             raise Exception("The cell index you are trying to access is out of bounds")
 
         return self.__cols[col_index][cell_index]
@@ -574,7 +573,7 @@ class Square:
 
         row_string = '\n\t'.join([repr(r) for r in self.__rows])
         col_string = '\n\t'.join([repr(c) for c in self.__cols])
-        return f'\nid: {self.__square_id}, width: {self.__width}, height: {self.__height}\nrows: \n\t{row_string}\ncols: \n\t{col_string}'
+        return f'\nid: {self.__square_id}, dims: {self.__dims}\nrows: \n\t{row_string}\ncols: \n\t{col_string}'
 
 
     def __setup_missing(self) -> dict[int, bool]:
@@ -602,17 +601,86 @@ class EntireSudoku:
     def __init__(self, dataframe: pd.DataFrame): 
         self.__width = 9
         self.__height = 9
-        self.__sqr_width = int(temp_width) if (temp_width := math.sqrt(self.__width)) == int(temp_width) else 0
-        self.__sqr_height = int(temp_height) if (temp_height := math.sqrt(self.__height)) == int(temp_height) else 0
-
-        if self.__sqr_width == 0 or self.__sqr_height == 0:
-            raise Exception("Width and height of dataframe are incorrect and cannot be used")
+        self.__sqr_dims = 3
 
         self.__rows = list()
         self.__cols = list()
         self.__sqrs = list()
 
         self.__initialize_all_data(dataframe)
+
+    
+    def check_sudoku(self) -> bool:
+        '''
+        Checks the validity of sudoku puzzle by row, column and square.
+        '''
+
+        fail = False
+        
+        # Check columns
+        for i in range(self.__width):
+            found = [0]*self.__width
+
+            for cell in self.__cols[i].get_cells():
+                val = cell.get_value()
+                if val == 0:
+                    continue
+                elif val > 9 or val < 0:
+                    found[0] += 2
+                else:
+                    found[val-1] += 1
+
+            fail |= max(found) >= 2
+
+        # Check rows
+        for i in range(self.__height):
+            found = [0]*self.__height
+
+            for cell in self.__rows[i].get_cells():
+                val = cell.get_value()
+                if val == 0:
+                    continue
+                elif val > 9 or val < 0:
+                    found[0] += 2
+                else:
+                    found[val-1] += 1
+
+            fail |= max(found) >= 2
+
+        # Check squares
+        for i in range(self.__sqr_dims * self.__sqr_dims):
+            found = [0]*self.__height
+
+            for row in self.__sqrs[i].get_rows():
+                for cell in row.get_cells():
+                    val = cell.get_value()
+                    if val == 0:
+                        continue
+                    elif val > 9 or val < 0:
+                        found[0] += 2
+                    else:
+                        found[val-1] += 1
+
+            fail |= max(found) >= 2
+
+        return fail
+
+
+
+    def update_possibilities(self) -> None:
+        '''
+        This function is used to check the possibilities for every cell in the 
+        sudoku. 
+
+        This function will be an in-place modification of __rows, __cols, and 
+        __sqrs.
+        '''
+
+        for i in range(self.__height):
+            for j in range(self.__width):
+                pass
+
+
 
 
     def sparse_print(self, blanks='0') -> None:
@@ -649,26 +717,38 @@ class EntireSudoku:
         for i in range(self.__height):
             self.__rows.append(Row(self.__height))
             self.__cols.append(Column(self.__width))
-            self.__sqrs.append(Square(i, self.__sqr_width, self.__sqr_width))
+            self.__sqrs.append(Square(i, self.__sqr_dims))
 
         temp_squares = [[None]*self.__width for _ in range(self.__height)]
+        temp_columns = [[None]*self.__width for _ in range(self.__width)]
+        temp_rows = [[None]*self.__height for _ in range(self.__height)]
         for i in range(self.__height):
             for j in range(self.__width):
                 
                 sqr_dict = rc_to_sqr_idx(i, j, self.__width)
                 sqr_idx, (sqr_row, sqr_col) = sqr_dict['sqr_index'], sqr_dict['sqr_local_rc']
 
-                sqr_local_idx = rc_to_idx(sqr_row, sqr_col, self.__sqr_width)
-                temp_squares[sqr_idx][sqr_local_idx] = Cell(dataframe.iat[i,j], index=rc_to_idx(i, j, self.__width), 
-                                                            sqr_index=sqr_idx, sqr_row=sqr_row, sqr_col=sqr_col)
+                sqr_local_idx = rc_to_idx(sqr_row, sqr_col, self.__sqr_dims)
+                cell = Cell(dataframe.iat[i,j], index=rc_to_idx(i, j, self.__width), 
+                                sqr_index=sqr_idx, sqr_row=sqr_row, sqr_col=sqr_col)
 
-        # Now that the data is in the temp_squares variable in a manageable 
-        # way, we need to insert it into our Squares objects
+                temp_squares[sqr_idx][sqr_local_idx] = cell
+                temp_columns[j][i] = cell
+                temp_rows[i][j] = cell
+
+
+        # Now that the data is in the temp_ variables in a manageable 
+        # way, we need to insert it into our objects
         for i,arr in enumerate(temp_squares):
             self.__sqrs[i].initialze_sqr(arr)
 
-        print(self.__sqrs)
+        for i,arr in enumerate(temp_rows):
+            self.__rows[i].initialze_row(arr)
 
+        for i,arr in enumerate(temp_columns):
+            self.__cols[i].initialze_col(arr)
+
+        print(self.__sqrs)
 
 
 if __name__ == "__main__":
@@ -680,6 +760,7 @@ if __name__ == "__main__":
     # TODO Setup sudoku structures
     setup_SQR_IDX_LOOKUP(9,9,3,3)
     sudoku = EntireSudoku(df)
+    print(sudoku.check_sudoku())
     #print(sudoku)
     #sudoku.sparse_print(blanks='_')
     # TODO Solve sudoku 
