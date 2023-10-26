@@ -216,22 +216,6 @@ class Row:
         return old
 
 
-    def __setup_missing(self) -> dict[int, bool]:
-        '''
-        Generates the __missing_values dictionary, where the key into the dict 
-        is an int (the value of a valid cell), and the value is a bool (a present 
-        indicator).
-
-        This function is not in-place and returns the generated dictionary.
-        '''
-
-        ret = dict()
-        for i in range(self.__length):
-            ret[i] = False
-
-        return ret
-
-
     def _update_missing(self, value=None):
         '''
         This function takes an optional value argument. This function can have 
@@ -264,6 +248,22 @@ class Row:
 
         else:
             self.__missing_values[value] = True
+
+
+    def __setup_missing(self) -> dict[int, bool]:
+        '''
+        Generates the __missing_values dictionary, where the key into the dict 
+        is an int (the value of a valid cell), and the value is a bool (a present 
+        indicator).
+
+        This function is not in-place and returns the generated dictionary.
+        '''
+
+        ret = dict()
+        for i in range(self.__length):
+            ret[i] = False
+
+        return ret
 
 
     def __repr__(self) -> str:
@@ -341,22 +341,6 @@ class Column:
         return old
 
 
-    def __setup_missing(self) -> dict[int, bool]:
-        '''
-        Generates the __missing_values dictionary, where the key into the dict 
-        is an int (the value of a valid cell), and the value is a bool (a present 
-        indicator).
-
-        This function is not in-place and returns the generated dictionary.
-        '''
-
-        ret = dict()
-        for i in range(self.__length):
-            ret[i] = False
-
-        return ret
-
-
     def _update_missing(self, value=None):
         '''
         This function takes an optional value argument. This function can have 
@@ -389,6 +373,22 @@ class Column:
 
         else:
             self.__missing_values[value] = True
+
+
+    def __setup_missing(self) -> dict[int, bool]:
+        '''
+        Generates the __missing_values dictionary, where the key into the dict 
+        is an int (the value of a valid cell), and the value is a bool (a present 
+        indicator).
+
+        This function is not in-place and returns the generated dictionary.
+        '''
+
+        ret = dict()
+        for i in range(self.__length):
+            ret[i] = False
+
+        return ret
 
 
     def __repr__(self) -> str:
@@ -441,38 +441,6 @@ class Square:
         self.__init_rows(rows)
 
             
-    def __init_cols(self, columns: list[list[Cell]]) -> None:
-        '''
-        Initialize the __cols Columns with cells that are in the columns argument.
-
-        This function is an in-place modification of the __cols instance variable.
-        '''
-
-        for i,col in enumerate(columns):
-            self.__cols[i].initialze_col(col)
-
-
-    def __init_rows(self, rows: list[list[Cell]]) -> None:
-        '''
-        Initialize the __rows Rows with cells that are in the rows argument.
-
-        This function is an in-place modification of the __rows instance variable.
-        '''
-
-        for i,row in enumerate(rows):
-            self.__rows[i].initialze_row(row)
-
-
-    def __repr__(self) -> str:
-        '''
-        This generates a string representation of the Square object.
-        '''
-
-        row_string = '\n\t'.join([repr(r) for r in self.__rows])
-        col_string = '\n\t'.join([repr(c) for c in self.__cols])
-        return f'\nid: {self.__square_id}, width: {self.__width}, height: {self.__height}\nrows: \n\t{row_string}\ncols: \n\t{col_string}'
-
-
     def get_row_cell(self, row_index, cell_index):
         '''
         Given an index (row_index) into the __rows instance list, we grab the 
@@ -539,21 +507,6 @@ class Square:
         return old
 
 
-    def __setup_missing(self) -> dict[int, bool]:
-        '''
-        Generates the __missing_values dictionary, where the key into the dict 
-        is an int (the value of a valid cell), and the value is a bool (a present 
-        indicator).
-
-        This function is not in-place and returns the generated dictionary.
-        '''
-
-        ret = dict()
-        for i in range(self.__sqr_height * self.__sqr_width):
-            ret[i] = False
-
-        return ret
-
     def _update_missing(self, value=None):
         '''
         This function takes an optional value argument. This function can have 
@@ -592,6 +545,54 @@ class Square:
             self.__missing_values[value] = True
 
 
+    def __init_cols(self, columns: list[list[Cell]]) -> None:
+        '''
+        Initialize the __cols Columns with cells that are in the columns argument.
+
+        This function is an in-place modification of the __cols instance variable.
+        '''
+
+        for i,col in enumerate(columns):
+            self.__cols[i].initialze_col(col)
+
+
+    def __init_rows(self, rows: list[list[Cell]]) -> None:
+        '''
+        Initialize the __rows Rows with cells that are in the rows argument.
+
+        This function is an in-place modification of the __rows instance variable.
+        '''
+
+        for i,row in enumerate(rows):
+            self.__rows[i].initialze_row(row)
+
+
+    def __repr__(self) -> str:
+        '''
+        This generates a string representation of the Square object.
+        '''
+
+        row_string = '\n\t'.join([repr(r) for r in self.__rows])
+        col_string = '\n\t'.join([repr(c) for c in self.__cols])
+        return f'\nid: {self.__square_id}, width: {self.__width}, height: {self.__height}\nrows: \n\t{row_string}\ncols: \n\t{col_string}'
+
+
+    def __setup_missing(self) -> dict[int, bool]:
+        '''
+        Generates the __missing_values dictionary, where the key into the dict 
+        is an int (the value of a valid cell), and the value is a bool (a present 
+        indicator).
+
+        This function is not in-place and returns the generated dictionary.
+        '''
+
+        ret = dict()
+        for i in range(self.__sqr_height * self.__sqr_width):
+            ret[i] = False
+
+        return ret
+
+
 class EntireSudoku:
     '''
     Contains the entire Sudoku problem inside various containers that facilitate
@@ -612,6 +613,28 @@ class EntireSudoku:
         self.__sqrs = list()
 
         self.__initialize_all_data(dataframe)
+
+
+    def sparse_print(self, blanks='0') -> None:
+        '''
+        Print entire sudoku matrix with only values.
+        '''
+
+        for row in self.__rows:
+            for cell in row.get_cells():
+                val = cell.get_value()
+                print(f'{blanks if val == 0 else val}', end=' ')
+            print()
+
+    def __repr__(self) -> str:
+        '''
+        This generates a string representation of the EntireSudoku object.
+        '''
+
+        row_string = '\n\t'.join([repr(r) for r in self.__rows])
+        col_string = '\n\t'.join([repr(c) for c in self.__cols])
+        return f'rows: \n\t{row_string}\ncols: \n\t{col_string}\nsqrs: \n{self.__sqrs}' 
+
 
     def __initialize_all_data(self, dataframe) -> None:
         '''
@@ -645,27 +668,6 @@ class EntireSudoku:
             self.__sqrs[i].initialze_sqr(arr)
 
         print(self.__sqrs)
-
-
-    def sparse_print(self, blanks='0') -> None:
-        '''
-        Print entire sudoku matrix with only values.
-        '''
-
-        for row in self.__rows:
-            for cell in row.get_cells():
-                val = cell.get_value()
-                print(f'{blanks if val == 0 else val}', end=' ')
-            print()
-
-    def __repr__(self) -> str:
-        '''
-        This generates a string representation of the EntireSudoku object.
-        '''
-
-        row_string = '\n\t'.join([repr(r) for r in self.__rows])
-        col_string = '\n\t'.join([repr(c) for c in self.__cols])
-        return f'rows: \n\t{row_string}\ncols: \n\t{col_string}\nsqrs: \n{self.__sqrs}' 
 
 
 
