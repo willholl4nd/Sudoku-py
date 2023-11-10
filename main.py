@@ -91,8 +91,8 @@ class Cell:
         self.__sqr_col = sqr_col
 
         # Setup possibilities
-        full = [i for i in range(9)]
-        self.__possible_values: list[int] = list() if initial_value == 0 else full
+        full = [i for i in range(1,10)]
+        self.__possible_values: list[int] = list() if initial_value != 0 else full
         self.__impossible_values: list[int] = list(set(full.copy()) - set(self.__possible_values))
 
         # Don't know if this is necessary
@@ -129,13 +129,19 @@ class Cell:
         '''
 
         if isinstance(possibility, int):
-            self.__possible_values.remove(possibility)
-            self.__impossible_values.append(possibility)
+            try:
+                self.__possible_values.remove(possibility)
+                self.__impossible_values.append(possibility)
+            except ValueError:
+                print(f'Cell {self} does not have possibility {possibility}')
 
         elif isinstance(possibility, list):
             for pos in possibility:
-                self.__possible_values.remove(pos)
-                self.__impossible_values.append(pos)
+                try:
+                    self.__possible_values.remove(pos)
+                    self.__impossible_values.append(pos)
+                except ValueError:
+                    print(f'Cell {self} does not have possibility {possibility}')
 
 
     def __repr__(self) -> str:
@@ -143,7 +149,8 @@ class Cell:
         This generates a string representation of the Cell object.
         '''
 
-        return f'val:{self.__value},idx:{self.__index}'
+        possibilities = "".join([str(i) for i in self.__possible_values])
+        return f'val:{self.__value},idx:{self.__index},poss:{possibilities}'
 
 
 class Row:
@@ -603,14 +610,15 @@ class EntireSudoku:
         self.__height = 9
         self.__sqr_dims = 3
 
-        self.__rows = list()
-        self.__cols = list()
-        self.__sqrs = list()
+        self.__rows: list[Row] = list()
+        self.__cols: list[Column] = list()
+        self.__sqrs: list[Square] = list()
 
         self.__initialize_all_data(dataframe)
+        self.update_possibilities()
 
     
-    def check_sudoku(self) -> bool:
+    def is_sudoku_valid(self) -> bool:
         '''
         Checks the validity of sudoku puzzle by row, column and square.
         '''
@@ -663,8 +671,7 @@ class EntireSudoku:
 
             fail |= max(found) >= 2
 
-        return fail
-
+        return not fail
 
 
     def update_possibilities(self) -> None:
@@ -676,11 +683,24 @@ class EntireSudoku:
         __sqrs.
         '''
 
-        for i in range(self.__height):
-            for j in range(self.__width):
-                pass
+        for row in range(self.__height):
+            for col in range(self.__width):
+                cell: Cell = self.__rows[row].get_cells()[col]
+                if (cell.get_value()) == 0:
+                    row_poss = self._check_row_possibilities(row, col)
+                    col_poss = self._check_col_possibilities(row, col)
+                    sqr_poss = self._check_sqr_possibilities(row, col)
+                    
+                    all_poss = []
+                    all_poss.extend(row_poss)
+                    all_poss.extend(col_poss)
+                    all_poss.extend(sqr_poss)
+                    all_poss = list(set(all_poss))
+                    all_poss.remove(0)
+                    
+                    print(f'Removing {all_poss} from cell row:{row},col:{col} - {cell}')
 
-
+                    cell.remove_possibility(all_poss)
 
 
     def sparse_print(self, blanks='0') -> None:
@@ -693,6 +713,63 @@ class EntireSudoku:
                 val = cell.get_value()
                 print(f'{blanks if val == 0 else val}', end=' ')
             print()
+
+
+    def _check_row_possibilities(self, row, col) -> list[int]:
+        '''
+        Takes the row and column of the cell being checked for possibilities, 
+        and then we check the row the cell is located in for any possibilities 
+        it can't be.
+
+        This function is not in-place but does not write to any instance 
+        variables.
+        '''
+
+        pos = []
+
+        for cell in self.__rows[row].get_cells():
+            pos.append(cell.get_value())
+
+        return pos
+
+
+    def _check_col_possibilities(self, row, col) -> list[int]:
+        '''
+        Takes the row and column of the cell being checked for possibilities, 
+        and then we check the column the cell is located in for any possibilities 
+        it can't be.
+
+        This function is not in-place but does not write to any instance 
+        variables.
+        '''
+
+        pos = []
+
+        for cell in self.__cols[col].get_cells():
+            pos.append(cell.get_value())
+
+        return pos
+
+
+    def _check_sqr_possibilities(self, row, col) -> list[int]:
+        '''
+        Takes the row and column of the cell being checked for possibilities, 
+        and then we check the square the cell is located in for any 
+        possibilities it can't be.
+
+        This function is not in-place but does not write to any instance 
+        variables.
+        '''
+
+        pos = []
+
+        sqr_idx = rc_to_sqr_idx(row, col, self.__width)
+        for row in self.__sqrs[sqr_idx['sqr_index']].get_rows():
+            for cell in row.get_cells():
+                pos.append(cell.get_value())
+
+        return pos
+
 
     def __repr__(self) -> str:
         '''
@@ -760,9 +837,19 @@ if __name__ == "__main__":
     # TODO Setup sudoku structures
     setup_SQR_IDX_LOOKUP(9,9,3,3)
     sudoku = EntireSudoku(df)
-    print(sudoku.check_sudoku())
-    #print(sudoku)
+    if not sudoku.is_sudoku_valid():
+        print('The sudoku puzzle you have entered is not valid')
+    print(sudoku)
+
+
+    
+
+
     #sudoku.sparse_print(blanks='_')
+
+
     # TODO Solve sudoku 
+
+
     # TODO Print sudoku
 
